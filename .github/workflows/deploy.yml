@@ -174,7 +174,15 @@ jobs:
       - name: Inject tweak and extension
         run: |
           cyan -uwsgq -i discord.ipa -o ${{ env.APP_NAME }}.ipa -f${{ env.ROOTLESS_DEB_FILE_NAME }} -f OpenInDiscord/build/OpenInDiscord.appex
-
+      # --- ここから追加 ---
+      - name: Fix Discord Japanese Localization
+        run: |
+          unzip -q ${{ env.APP_NAME }}.ipa -d temp_ipa
+          plutil -replace CFBundleAllowMixedLocalizations -bool YES temp_ipa/Payload/Discord.app/Info.plist
+          plutil -replace CFBundleDevelopmentRegion -string ja temp_ipa/Payload/Discord.app/Info.plist
+          cd temp_ipa && zip -qr ../${{ env.APP_NAME }}.ipa Payload && cd ..
+          rm -rf temp_ipa
+      # --- ここまで追加 ---
       - name: Upload ipa as artifact
         uses: actions/upload-artifact@v4
         with:
