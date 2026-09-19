@@ -91,7 +91,11 @@ static BOOL isSelfCall(void)
 %hook NSBundle
 - (NSString *)bundleIdentifier
 {
-    return isSelfCall() ? DISCORD_BUNDLE_ID : %orig;
+    if (isSelfCall())
+    {
+        return DISCORD_BUNDLE_ID;
+    }
+    return %orig;
 }
 
 - (NSDictionary *)infoDictionary
@@ -99,7 +103,8 @@ static BOOL isSelfCall(void)
     if (!isSelfCall())
         return %orig;
 
-    NSMutableDictionary *info    = [%orig mutableCopy];
+    NSDictionary *origDict = %orig;
+    NSMutableDictionary *info    = [origDict mutableCopy];
     info[@"CFBundleIdentifier"]  = DISCORD_BUNDLE_ID;
     info[@"CFBundleDisplayName"] = DISCORD_NAME;
     info[@"CFBundleName"]        = DISCORD_NAME;
@@ -170,7 +175,7 @@ static BOOL isSelfCall(void)
 
     NSArray<UTType *> *contentTypesNew = @[ UTTypeItem, UTTypeFolder ];
 
-    UIDocumentPickerViewController *ans = [self initForOpeningContentTypes:contentTypesNew asCopy:YES];
+    UIDocumentPickerViewController *ans = %orig(contentTypesNew, YES);
     if (shouldMultiselect)
     {
         [ans setAllowsMultipleSelection:YES];
