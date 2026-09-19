@@ -229,7 +229,8 @@ jobs:
         with:
           tag_name: v${{ env.DISCORD_VERSION }}
           files: |
-            ${{ env.ROOTLESS_DEB_FILE_NAME }}${{ env.APP_NAME }}.ipa
+            ${{ env.ROOTLESS_DEB_FILE_NAME }}
+            ${{ env.APP_NAME }}.ipa
           generate_release_notes: true
           prerelease: ${{ env.IS_PRERELEASE }}
           fail_on_unmatched_files: true
