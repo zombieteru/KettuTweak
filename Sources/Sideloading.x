@@ -170,7 +170,6 @@ static BOOL isSelfCall(void)
 
     NSArray<UTType *> *contentTypesNew = @[ UTTypeItem, UTTypeFolder ];
 
-    // 💡 ここを [self ...] の形に書き換えます
     UIDocumentPickerViewController *ans = [self initForOpeningContentTypes:contentTypesNew asCopy:YES];
     if (shouldMultiselect)
     {
@@ -178,22 +177,6 @@ static BOOL isSelfCall(void)
     }
     return ans;
 }
-
-- (instancetype)initWithDocumentTypes:(NSArray<UTType *> *)contentTypes inMode:(NSUInteger)mode
-{
-    return [self initForOpeningContentTypes:contentTypes asCopy:(mode == 1 ? NO : YES)];
-}
-
-- (void)setAllowsMultipleSelection:(BOOL)allowsMultipleSelection
-{
-    if ([self allowsMultipleSelection])
-    {
-        return;
-    }
-    %orig(YES);
-}
-
-%end
 
 - (instancetype)initWithDocumentTypes:(NSArray<UTType *> *)contentTypes inMode:(NSUInteger)mode
 {
