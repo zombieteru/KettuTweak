@@ -159,22 +159,28 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO | xcbeautify
 
-      - name: Extract Values
+      - name: Extract Values and Dylib
         run: |
           NAME=$(grep '^Name:' control | cut -d ' ' -f 2)
           PACKAGE=$(grep '^Package:' control | cut -d ' ' -f 2)
           VERSION=$(grep '^Version:' control | cut -d ' ' -f 2)
-          ROOTLESS_DEB_FILE_NAME="${PACKAGE}_${VERSION}_iphoneos-arm64.deb"
+          ROOTLESS_DEB_FILE_NAME=$(ls *.deb packages/*.deb 2>/dev/null | head -n 1)
+
+          # DEBパッケージを解凍して .dylib を抽出
+          dpkg-deb -x "$ROOTLESS_DEB_FILE_NAME" deb_extracted
+          DYLIB_PATH=$(find deb_extracted -name "*.dylib" | head -n 1)
+
           echo "ROOTLESS_DEB_FILE_NAME=$ROOTLESS_DEB_FILE_NAME" >> $GITHUB_ENV
           echo "APP_NAME=$NAME" >> $GITHUB_ENV
+          echo "EXTRACTED_DYLIB=$DYLIB_PATH" >> $GITHUB_ENV
 
       - name: Install cyan
         run: pip install --force-reinstall https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip Pillow
 
-      - name: Inject tweak and extension
+      - name: Inject tweak dylib and extension
         run: |
-          cyan -uwsgq -i discord.ipa -o ${{ env.APP_NAME }}.ipa -f${{ env.ROOTLESS_DEB_FILE_NAME }} -f OpenInDiscord/build/OpenInDiscord.appex
-      # --- ここから追加 ---
+          cyan -uwsgq -i discord.ipa -o ${{ env.APP_NAME }}.ipa -f${{ env.EXTRACTED_DYLIB }} -f OpenInDiscord/build/OpenInDiscord.appex
+
       - name: Fix Discord Japanese Localization
         run: |
           unzip -q ${{ env.APP_NAME }}.ipa -d temp_ipa
@@ -182,7 +188,7 @@ jobs:
           plutil -replace CFBundleDevelopmentRegion -string ja temp_ipa/Payload/Discord.app/Info.plist
           cd temp_ipa && zip -qr ../${{ env.APP_NAME }}.ipa Payload && cd ..
           rm -rf temp_ipa
-      # --- ここまで追加 ---
+
       - name: Upload ipa as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -237,8 +243,8 @@ jobs:
         with:
           tag_name: v${{ env.DISCORD_VERSION }}
           files: |
-            ${{ env.ROOTLESS_DEB_FILE_NAME }}
-            ${{ env.APP_NAME }}.ipa
+            *.deb
+            *.ipa
           generate_release_notes: true
           prerelease: ${{ env.IS_PRERELEASE }}
           fail_on_unmatched_files: true
@@ -252,7 +258,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const assets = JSON.parse('${{ steps.create_release.outputs.assets }}');
-            const debAsset = assets.find(asset => asset.name === '${{ env.ROOTLESS_DEB_FILE_NAME }}');
+            const debAsset = assets.find(asset => asset.name.endsWith('.deb'));
             
             if (!debAsset) {
               core.setFailed('Could not find DEB asset in release');
@@ -265,7 +271,7 @@ jobs:
               event_type: 'package-update',
               client_payload: {
                 package_url: debAsset.browser_download_url,
-                package_name: '${{ env.ROOTLESS_DEB_FILE_NAME }}'
+                package_name: debAsset.name
               }
             });
 
@@ -313,3 +319,7 @@ jobs:
           default_author: github_actions
           message: "chore: update app-repo.json"
           add: app-repo.json
+
+          name: ipa
+          path: ${{ env.APP_NAME }}.ipa
+
